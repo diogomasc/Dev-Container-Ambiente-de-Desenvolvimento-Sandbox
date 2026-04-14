@@ -1,0 +1,75 @@
+# ══════════════════════════════════════════════════════════════
+# Dev Container — Docker Compose
+# ══════════════════════════════════════════════════════════════
+# Hardware de referência:
+#   CPU:  Intel i7-1255U (10 cores / 12 threads, 4.7GHz boost)
+#   RAM:  32 GB DDR4 3160MHz
+#   GPU:  Intel Iris Xe (iGPU) — sem GPU dedicada
+#   Disco: 1 TB NVMe (Crucial P3 Plus)
+#
+# Uso:
+#   docker compose up -d
+# ══════════════════════════════════════════════════════════════
+
+services:
+  dev:
+    build: .
+    container_name: dev-container
+    hostname: dev-container
+
+    restart: "no"
+
+    # ── Volumes ──
+    volumes:
+      - ./projects:/workspace:cached
+      - /var/run/docker.sock:/var/run/docker.sock
+
+    # ── Portas ──
+    ports:
+      - "8888:8888" # Interface do Jupyter Notebook
+
+    # ── Entrypoint ──
+    # Ajusta os limites de monitoramento de arquivos (inotify) — vital para
+    # o Hot Reload (HMR) do Node.js —, corrige as permissões da pasta de
+    # trabalho e mantém o container em execução contínua.
+    entrypoint: >
+      sh -c "
+        sudo sysctl -w fs.inotify.max_user_watches=524288 > /dev/null 2>&1;
+        sudo sysctl -w fs.inotify.max_user_instances=1024 > /dev/null 2>&1;
+        sudo chown -R devuser:devuser /workspace 2>/dev/null;
+        if [ -e /var/run/docker.sock ]; then
+          sudo chmod 666 /var/run/docker.sock 2>/dev/null;
+        fi;
+        sleep infinity
+      "
+
+    # ── Limites de Recursos ──
+    # Planejamento: 32 GB total → ~10 GB para o host (SO + Desktop) + ~16 GB para o container
+    #              12 threads  → 4 para o host + 8 para o container
+    #
+    # Em treinamentos de IA/ML via CPU (sem NVIDIA), memória RAM e threads
+    # são os recursos críticos. O DataLoader do PyTorch utiliza /dev/shm para IPC.
+    deploy:
+      resources:
+        limits:
+          cpus: "8"
+          memory: 16G
+        reservations:
+          cpus: "1"
+          memory: 2G
+
+    # ── Memória Compartilhada (Shared Memory) ──
+    # O DataLoader do PyTorch (com num_workers > 0) usa /dev/shm para
+    # comunicação entre processos (IPC). O padrão do Docker (64MB) é
+    # insuficiente para lotes (batches) grandes.
+    # 4 GB representa ~16% da RAM do container, ideal para a maioria dos datasets.
+    shm_size: "4gb"
+
+    # ── Tmpfs para /tmp (armazenado em RAM, limpeza automática) ──
+    # 512 MB reservados para fluxos de IA (serialização de modelos e checkpoints temporários)
+    tmpfs:
+      - /tmp:size=512M
+
+    # ── Segurança ──
+    security_opt:
+      - no-new-privileges:true
