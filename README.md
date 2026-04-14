@@ -195,27 +195,66 @@ docker compose exec dev bash
 
 ## Jupyter Notebook
 
-O Jupyter está pré-instalado via `uv tool`. Para usar:
+O JupyterLab está pré-instalado via `uv tool install jupyterlab`. A interface é o **JupyterLab** (sucessor do Jupyter Notebook clássico).
+
+> ⚠️ **Nota**: O binário disponível é `jupyter-lab`, não `jupyter notebook`.
 
 ### Iniciar o servidor
 
+**De fora do container** (modo interativo — token aparece no terminal):
+
 ```bash
-# De fora do container
-docker compose exec dev bash -c "jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser"
+docker compose exec dev bash -c "jupyter-lab --ip=0.0.0.0 --port=8888 --no-browser"
 ```
 
-Ou de dentro do container (via VS Code ou `exec`):
+**De fora do container** (modo background — libera o terminal):
 
 ```bash
-jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser
+docker compose exec -d dev bash -c "jupyter-lab --ip=0.0.0.0 --port=8888 --no-browser"
+```
+
+**De dentro do container** (via VS Code ou `docker compose exec dev bash`):
+
+```bash
+jupyter-lab --ip=0.0.0.0 --port=8888 --no-browser
+```
+
+### Obter o token de acesso
+
+Se o servidor foi iniciado em modo background (`-d`), o token não aparece no terminal.
+Use o comando abaixo para recuperá-lo:
+
+```bash
+# De fora do container
+docker compose exec dev bash -c "jupyter-lab list"
+
+# De dentro do container
+jupyter-lab list
+```
+
+A saída mostrará algo como:
+
+```
+Currently running servers:
+http://dev-container:8888/?token=abc123... :: /workspace
 ```
 
 ### Acessar no navegador
 
-Acesse: **http://localhost:8888**
+Copie a URL acima e substitua `dev-container` por `localhost`:
 
-> O token de acesso será exibido no terminal ao iniciar o Jupyter, na forma:
-> `http://127.0.0.1:8888/tree?token=<TOKEN>`
+```
+http://localhost:8888/?token=abc123...
+```
+
+Ou acesse `http://localhost:8888` e cole o token no campo "Password or token".
+
+### Parar o servidor
+
+```bash
+# De fora do container
+docker compose exec dev bash -c "jupyter-lab stop"
+```
 
 ### Usar via VS Code
 
@@ -285,7 +324,6 @@ python3 -c "import numpy; numpy.show_config()"
 dev-container/
 ├── Dockerfile                    # Definição da imagem
 ├── docker-compose.yml            # Orquestração do container
-├── Ambiente-Dev-Ubuntu-Setup.md  # Referência do setup do host
 ├── projects/                     # Montado em /workspace (seus projetos)
 │   └── (seus projetos aqui)
 └── README.md                     # Este arquivo
@@ -353,7 +391,7 @@ docker compose ps
 docker compose exec dev bash -c "\
   echo '=== Node ===' && node --version && \
   echo '=== Python ===' && python3 --version && \
-  echo '=== Jupyter ===' && jupyter --version && \
+  echo '=== JupyterLab ===' && jupyter-lab --version && \
   echo '=== Docker CLI ===' && docker --version && \
   echo '=== Docker Compose ===' && docker compose version && \
   echo '=== Starship ===' && starship --version && \
@@ -470,12 +508,16 @@ O entrypoint já configura `inotify.max_user_watches=524288`. Se o problema pers
 cat /proc/sys/fs/inotify/max_user_watches  # deve ser 524288
 ```
 
-### Jupyter não abre no browser
+### Jupyter não abre / token não aparece
 
-Certifique-se de usar `--ip=0.0.0.0` ao iniciar:
+Certifique-se de usar `jupyter-lab` (não `jupyter notebook`) e `--ip=0.0.0.0`:
 
 ```bash
-jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser
+# Iniciar (modo interativo — token aparece no terminal)
+docker compose exec dev bash -c "jupyter-lab --ip=0.0.0.0 --port=8888 --no-browser"
+
+# Se iniciou em background (-d), recupere o token com:
+docker compose exec dev bash -c "jupyter-lab list"
 ```
 
 A porta 8888 deve estar mapeada no compose (já está por padrão).
