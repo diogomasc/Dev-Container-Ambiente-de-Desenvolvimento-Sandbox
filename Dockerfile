@@ -45,6 +45,7 @@ RUN apt-get update \
         libopenblas-dev \
         gfortran \
         procps \
+        tree \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # ── Docker CLI (Montagem via socket para o host) ──────────────
