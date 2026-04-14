@@ -1,6 +1,6 @@
 # ══════════════════════════════════════════════════════════════
 # Dev Container — Ambiente de Desenvolvimento Leve (Lightweight)
-# Stack: Node 22 LTS (fnm) + Python 3 (uv) + Jupyter + Docker CLI + Starship
+# Stack: Node 22 LTS (fnm) + Python 3 (uv) + JupyterLab + Docker CLI + Starship
 # ══════════════════════════════════════════════════════════════
 # Decisões de Projeto:
 #   - Bash + Starship em vez de Zsh + Oh-My-Zsh (economiza ~30MB, alinha com o host)
@@ -15,7 +15,7 @@ FROM ubuntu:24.04
 
 # ── Metadados (Padrão OCI) ──────────────────────────────────
 LABEL org.opencontainers.image.title="dev-container"
-LABEL org.opencontainers.image.description="Container de dev leve: Node 22 LTS + Python 3 + Jupyter + Docker CLI + Starship"
+LABEL org.opencontainers.image.description="Container de dev leve: Node 22 LTS + Python 3 + JupyterLab + Docker CLI + Starship"
 LABEL org.opencontainers.image.authors="Diogo Mascarenhas <diogomascarenhas0574@gmail.com>"
 
 # ── Configurações de Ambiente ────────────────────────────────
@@ -91,12 +91,14 @@ RUN curl -fsSL https://fnm.vercel.app/install | bash \
     && npm config set audit false \
     && npm cache clean --force
 
-# ── uv + Jupyter ─────────────────────────────────────────────
+# ── uv + JupyterLab ──────────────────────────────────────────
 # uv: gerenciador de pacotes Python ultra-rápido (Rust, substitui o pip)
-# Jupyter instalado como 'tool' para evitar poluir o ambiente Python global
+# JupyterLab instalado como 'tool' para evitar poluir o ambiente Python global.
+# Nota: o meta-pacote 'jupyter' não expõe entrypoints — 'jupyterlab' é o
+# pacote que fornece o CLI `jupyter` e a interface Lab.
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
     && export PATH="$HOME/.local/bin:$PATH" \
-    && uv tool install jupyter --quiet \
+    && uv tool install jupyterlab --quiet \
     && rm -rf /tmp/* ~/.cache/uv
 
 # ── Prompt Starship ──────────────────────────────────────────
