@@ -146,17 +146,17 @@ format = "([\\[$all_status$ahead_behind\\]]($style) )"
 style  = "red"
 
 [nodejs]
-symbol = " "
+symbol = "󰎙 "
 format = "via [$symbol($version)]($style) "
 style  = "bold green"
 
 [python]
-symbol = " "
+symbol = "󰌠 "
 format = "via [$symbol($version)( \\($virtualenv\\))]($style) "
 style  = "bold yellow"
 
 [docker_context]
-symbol = " "
+symbol = "󰡨 "
 format = "on [$symbol$context]($style) "
 style  = "bold blue"
 EOF
