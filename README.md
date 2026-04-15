@@ -530,6 +530,38 @@ O `shm_size: 4gb` no compose deve resolver. Se persistir, aumente:
 shm_size: "8gb"
 ```
 
+### VS Code Remote: "Failed to change server installation script owner"
+
+Este erro ocorre porque o Docker monta `tmpfs` com `noexec` por padrão, impedindo que o VS Code execute scripts de bootstrap em `/tmp`.
+
+**Sintoma**: Ao usar "Attach to Running Container", aparece:
+
+```
+Failed to change server installation script owner to devuser. Error:
+Command failed: docker exec -u root dev-container chown devuser: /tmp/<hash>.sh
+chown: cannot access '/tmp/<hash>.sh': No such file or directory
+```
+
+**Causa**: A flag `noexec` no tmpfs de `/tmp`. Verifique com:
+
+```bash
+docker exec dev-container mount | grep "on /tmp"
+# Se aparece "noexec", esse é o problema
+```
+
+**Solução**: No `docker-compose.yml`, adicione `exec` ao tmpfs:
+
+```yaml
+tmpfs:
+  - /tmp:size=512M,exec  # exec necessário para VS Code Remote
+```
+
+Depois recrie o container:
+
+```bash
+docker compose down && docker compose up -d
+```
+
 ### Docker CLI dentro do container não funciona
 
 Verifique se o socket está montado:
@@ -538,3 +570,4 @@ Verifique se o socket está montado:
 ls -la /var/run/docker.sock  # deve existir
 docker ps                    # deve listar containers do host
 ```
+

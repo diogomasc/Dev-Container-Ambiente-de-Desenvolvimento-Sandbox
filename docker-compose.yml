@@ -67,8 +67,11 @@ services:
 
     # ── Tmpfs para /tmp (armazenado em RAM, limpeza automática) ──
     # 512 MB reservados para fluxos de IA (serialização de modelos e checkpoints temporários)
+    # NOTA: exec explícito é necessário porque o Docker aplica noexec por padrão
+    # em tmpfs, o que impede o VS Code Remote de instalar o servidor via scripts
+    # em /tmp. As opções nosuid e nodev continuam ativas para segurança.
     tmpfs:
-      - /tmp:size=512M
+      - /tmp:size=512M,exec
 
     # ── Segurança ──
     security_opt:
