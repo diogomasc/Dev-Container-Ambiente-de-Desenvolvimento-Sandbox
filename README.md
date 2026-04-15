@@ -347,7 +347,7 @@ Distribuição de recursos baseada no hardware (32 GB RAM, 12 threads):
 | **RAM**  | ~16 GB           | **16 GB**          | Margem para OS + desktop + browser                |
 | **CPU**  | 4 threads        | **8 threads**      | Suficiente para compilações em background no host |
 | **shm**  | —                | **4 GB**           | PyTorch DataLoader IPC (multiprocessing)          |
-| **/tmp** | —                | **512 MB** (tmpfs) | Checkpoints temporários, serialização de modelos  |
+| **/scratch** | —            | **512 MB** (tmpfs) | Checkpoints temporários, serialização de modelos  |
 
 ### Ajustar limites
 
@@ -530,9 +530,9 @@ O `shm_size: 4gb` no compose deve resolver. Se persistir, aumente:
 shm_size: "8gb"
 ```
 
-### VS Code Remote: "Failed to change server installation script owner"
+### VS Code / Antigravity Remote: "Failed to change server installation script owner"
 
-Este erro ocorre porque o Docker monta `tmpfs` com `noexec` por padrão, impedindo que o VS Code execute scripts de bootstrap em `/tmp`.
+Este erro ocorre quando há `tmpfs` montado sobre `/tmp` no `docker-compose.yml`.
 
 **Sintoma**: Ao usar "Attach to Running Container", aparece:
 
@@ -542,18 +542,13 @@ Command failed: docker exec -u root dev-container chown devuser: /tmp/<hash>.sh
 chown: cannot access '/tmp/<hash>.sh': No such file or directory
 ```
 
-**Causa**: A flag `noexec` no tmpfs de `/tmp`. Verifique com:
+**Causa**: O `docker cp` (usado pelo VS Code/Antigravity para copiar o script de bootstrap) escreve na camada de filesystem subjacente do container. Quando há um `tmpfs` montado sobre `/tmp`, ele **mascara** esses arquivos — o `docker cp` reporta sucesso, mas o arquivo fica invisível dentro do container.
 
-```bash
-docker exec dev-container mount | grep "on /tmp"
-# Se aparece "noexec", esse é o problema
-```
-
-**Solução**: No `docker-compose.yml`, adicione `exec` ao tmpfs:
+**Solução**: Mova o tmpfs para outro caminho (e.g., `/scratch`):
 
 ```yaml
 tmpfs:
-  - /tmp:size=512M,exec  # exec necessário para VS Code Remote
+  - /scratch:size=512M  # NÃO usar /tmp — quebra docker cp
 ```
 
 Depois recrie o container:

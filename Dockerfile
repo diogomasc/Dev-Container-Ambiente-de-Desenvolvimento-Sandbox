@@ -28,10 +28,12 @@ ENV LC_ALL=C.UTF-8
 # python3-venv: ambientes Python isolados sem poluir o pip do sistema
 # libopenblas-dev: BLAS/LAPACK otimizado para inferência em CPU (NumPy/SciPy/PyTorch)
 # procps: ferramentas ps/top/free para monitorar cargas de treinamento
+# wget: necessário para o Antigravity (VS Code) baixar o servidor remoto
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
+        wget \
         git \
         sudo \
         unzip \
@@ -202,6 +204,11 @@ RUN git config --global user.name "Diogo Mascarenhas" \
 # ── Consolidação do PATH ─────────────────────────────────────
 ENV PATH="/home/${USERNAME}/.local/bin:/home/${USERNAME}/.local/share/fnm:${PATH}"
 
+# ── Entrypoint (init privilegiado → drop para devuser) ───────
+# Copia como root (proprietário) para que o entrypoint possa executar
+# sysctl e chown antes de dropar para devuser.
+COPY --chmod=755 entrypoint.sh /usr/local/bin/entrypoint.sh
+
 # ── Espaço de Trabalho ───────────────────────────────────────
 WORKDIR /workspace
 
@@ -212,5 +219,6 @@ EXPOSE 8888
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD pgrep -x "sleep" > /dev/null || exit 1
 
-# ── Entrypoint Padrão ────────────────────────────────────────
+# ── Entrypoint + CMD Padrão ──────────────────────────────────
+ENTRYPOINT ["entrypoint.sh"]
 CMD ["sleep", "infinity"]

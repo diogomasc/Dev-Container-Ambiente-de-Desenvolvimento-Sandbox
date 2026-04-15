@@ -29,19 +29,12 @@ services:
       - "8888:8888" # Interface do Jupyter Notebook
 
     # ── Entrypoint ──
-    # Ajusta os limites de monitoramento de arquivos (inotify) — vital para
-    # o Hot Reload (HMR) do Node.js —, corrige as permissões da pasta de
-    # trabalho e mantém o container em execução contínua.
-    entrypoint: >
-      sh -c "
-        sudo sysctl -w fs.inotify.max_user_watches=524288 > /dev/null 2>&1;
-        sudo sysctl -w fs.inotify.max_user_instances=1024 > /dev/null 2>&1;
-        sudo chown -R devuser:devuser /workspace 2>/dev/null;
-        if [ -e /var/run/docker.sock ]; then
-          sudo chmod 666 /var/run/docker.sock 2>/dev/null;
-        fi;
-        sleep infinity
-      "
+    # O entrypoint.sh (embarcado na imagem via Dockerfile) executa como root:
+    #   1. Ajusta inotify (HMR do Node.js)
+    #   2. Corrige permissões do /workspace e docker.sock
+    #   3. Dropa para devuser via exec su
+    # Isso é compatível com no-new-privileges (sem sudo) e mantém
+    # Config.User=devuser para o VS Code/Antigravity detectar corretamente.
 
     # ── Limites de Recursos ──
     # Planejamento: 32 GB total → ~10 GB para o host (SO + Desktop) + ~16 GB para o container
@@ -65,14 +58,18 @@ services:
     # 4 GB representa ~16% da RAM do container, ideal para a maioria dos datasets.
     shm_size: "4gb"
 
-    # ── Tmpfs para /tmp (armazenado em RAM, limpeza automática) ──
+    # ── Tmpfs para /scratch (armazenado em RAM, limpeza automática) ──
     # 512 MB reservados para fluxos de IA (serialização de modelos e checkpoints temporários)
-    # NOTA: exec explícito é necessário porque o Docker aplica noexec por padrão
-    # em tmpfs, o que impede o VS Code Remote de instalar o servidor via scripts
-    # em /tmp. As opções nosuid e nodev continuam ativas para segurança.
+    # IMPORTANTE: Não usar tmpfs no /tmp — o docker cp (usado pelo VS Code e
+    # Antigravity para instalar o servidor remoto) escreve na camada de filesystem
+    # subjacente, e o tmpfs montado sobre /tmp mascara esses arquivos, causando
+    # "No such file or directory" no bootstrap do servidor.
     tmpfs:
-      - /tmp:size=512M,exec
+      - /scratch:size=512M
 
     # ── Segurança ──
-    security_opt:
-      - no-new-privileges:true
+    # NOTA: no-new-privileges foi removido porque bloqueia sudo, que é
+    # necessário no entrypoint.sh para sysctl/chown. Em um container de
+    # desenvolvimento, a fronteira de segurança é o próprio container —
+    # sudo interno é esperado. O container roda como devuser (non-root)
+    # por padrão, com sudo NOPASSWD apenas para configurações de sistema.
